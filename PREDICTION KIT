@@ -1,0 +1,73 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score
+
+# Load the dataset
+data = pd.read_csv("diabetes_data.csv")  # Replace with your dataset path
+
+# Display the first few rows of the dataset
+print(data.head())
+
+# Check for missing values
+print(data.isnull().sum())
+
+# Fill missing values with median values of respective columns
+data.fillna(data.median(), inplace=True)
+
+# Function to categorize health stage into Low, Medium, and High
+def categorize_health(row):
+    if row['BMI'] < 25 and row['Glucose'] < 140 and row['Age'] < 40:
+        return 'Low'
+    elif (25 <= row['BMI'] < 30 or 140 <= row['Glucose'] < 200) and row['Age'] < 60:
+        return 'Medium'
+    else:
+        return 'High'
+
+# Apply the categorize_health function to create the 'HealthStage' column
+data['HealthStage'] = data.apply(categorize_health, axis=1)
+
+# Encode 'HealthStage' column into numerical values
+encoder = LabelEncoder()
+data['HealthStage'] = encoder.fit_transform(data['HealthStage'])
+
+# Define features (X) and target (y)
+X = data.drop(['HealthStage', 'Outcome'], axis=1)  # Exclude 'HealthStage' and 'Outcome' columns
+y = data['HealthStage']  # The target variable is 'HealthStage'
+
+# Split the dataset into training and testing sets (80% training, 20% testing)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Standardize the features (important for many machine learning models)
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# Initialize and train the Random Forest Classifier
+classifier = RandomForestClassifier(n_estimators=100, random_state=42)
+classifier.fit(X_train, y_train)
+
+# Evaluate the model
+y_pred = classifier.predict(X_test)
+
+# Print classification report and accuracy score
+print("Classification Report:")
+print(classification_report(y_test, y_pred, target_names=encoder.classes_))
+
+print("Accuracy Score:")
+print(accuracy_score(y_test, y_pred))
+
+# Predict health stage for a new patient
+# Example patient data: Pregnancies, Glucose, BloodPressure, SkinThickness, Insulin, BMI, DiabetesPedigreeFunction, Age
+new_patient = np.array([2, 120, 80, 22, 180, 28.5, 0.5, 35]).reshape(1, -1)
+
+# Standardize the new patient's data
+new_patient_scaled = scaler.transform(new_patient)
+
+# Predict the health stage
+predicted_stage = classifier.predict(new_patient_scaled)
+predicted_stage_label = encoder.inverse_transform(predicted_stage)
+
+print(f"The predicted health stage for the new patient is: {predicted_stage_label[0]}")
